@@ -1,59 +1,154 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Products API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+RESTful API built with Laravel to manage products and their prices in different currencies.
 
-## About Laravel
+## Requirements
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.2+
+- Composer
+- SQLite (default) or MySQL / PostgreSQL
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Installation
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```bash
+git clone https://github.com/glennisbeth/prueba-backend-products.git
+cd prueba-backend-products
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve
+```
 
-## Learning Laravel
+The project uses SQLite by default. If the database file does not exist, `php artisan migrate` will offer to create it. To use another database, update the `DB_*` variables in `.env` before running the migrations.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+The seeders create a test user, four currencies (USD, EUR, COP, MXN) and 10 sample products.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Email | Password |
+|---|---|
+| test@example.com | password |
 
-## Laravel Sponsors
+## Documentation
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+The API is documented with OpenAPI 3. With the server running, the interactive Swagger UI is available at:
 
-### Premium Partners
+http://localhost:8000/docs
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+To try the protected endpoints, call `POST /login`, copy the token, click **Authorize** and paste it.
 
-## Contributing
+The specification file is `public/openapi.yaml`, and it can also be imported into tools like Postman or Insomnia.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Authentication
 
-## Code of Conduct
+Every endpoint except login requires a Sanctum token. Get one with:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+curl -X POST http://localhost:8000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password"}'
+```
 
-## Security Vulnerabilities
+Send it in the `Authorization: Bearer <token>` header. Tokens expire after 24 hours.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Endpoints
 
-## License
+All routes are prefixed with `/api`.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+| Method | Route | Description |
+|---|---|---|
+| POST | /login | Get a token |
+| POST | /logout | Revoke the current token |
+| GET | /currencies | List currencies |
+| GET | /products | List products (paginated, supports `?per_page=` and `?search=`) |
+| POST | /products | Create a product |
+| GET | /products/{id} | Get a product with its prices |
+| PUT | /products/{id} | Update a product |
+| DELETE | /products/{id} | Delete a product |
+| GET | /products/{id}/prices | List the prices of a product |
+| POST | /products/{id}/prices | Register a price in another currency |
+
+### Create a product
+
+```json
+{
+    "name": "Mechanical keyboard",
+    "description": "Red switches and backlight",
+    "price": 120.50,
+    "currency_id": 1,
+    "tax_cost": 22.90,
+    "manufacturing_cost": 60
+}
+```
+
+Response `201`:
+
+```json
+{
+    "data": {
+        "id": 11,
+        "name": "Mechanical keyboard",
+        "description": "Red switches and backlight",
+        "price": "120.50",
+        "currency_id": 1,
+        "currency": { "id": 1, "name": "USD", "symbol": "$", "exchange_rate": "1.000000" },
+        "tax_cost": "22.90",
+        "manufacturing_cost": "60.00",
+        "created_at": "2026-10-29T15:04:11+00:00",
+        "updated_at": "2026-10-29T15:04:11+00:00"
+    }
+}
+```
+
+`PUT /products/{id}` accepts partial updates: only the fields to change need to be sent.
+
+### Register a price in another currency
+
+```json
+{
+    "currency_id": 2,
+    "price": 115
+}
+```
+
+`price` is optional. When it is not sent, it is calculated from the product's base price and the exchange rates of both currencies. Exchange rates are expressed against USD, so the amount is first converted to USD and then to the target currency.
+
+A product cannot have two prices in the same currency, and a price cannot be registered in the product's base currency.
+
+### Response codes
+
+| Code | When |
+|---|---|
+| 200 | Successful request |
+| 201 | Resource created |
+| 204 | Resource deleted / logout |
+| 401 | Missing or invalid token |
+| 404 | Resource not found |
+| 422 | Validation error |
+| 429 | Too many requests |
+
+## Project structure
+
+- `app/Http/Controllers/Api`: API controllers
+- `app/Http/Requests`: request validation
+- `app/Http/Resources`: JSON response formatting
+- `app/Services/CurrencyConverter.php`: currency conversion logic
+- `database/`: migrations, factories and seeders
+- `public/openapi.yaml`: OpenAPI specification
+- `tests/`: feature and unit tests
+
+## Security
+
+- Token authentication with Laravel Sanctum, with tokens expiring after 24 hours.
+- Rate limiting: 5 login attempts per minute and 60 requests per minute for the rest of the API.
+- Input validation with Form Requests, and mass assignment restricted with `$fillable`.
+- Responses go through API Resources, so only the defined fields are exposed.
+- Products are soft deleted.
+- `APP_DEBUG` should be set to `false` in production.
+
+## Tests
+
+```bash
+php artisan test
+```
+
+Tests run on an in-memory SQLite database and cover authentication, the products CRUD, product prices and the currency conversion.
