@@ -165,7 +165,7 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Product'
+                    $ref: '#/components/schemas/ProductDetail'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -355,17 +355,23 @@ components:
         manufacturing_cost:
           type: string
           example: '60.00'
-        prices:
-          type: array
-          description: Only included when getting a single product
-          items:
-            $ref: '#/components/schemas/ProductPrice'
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
+
+    ProductDetail:
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            prices:
+              type: array
+              description: Prices registered in other currencies
+              items:
+                $ref: '#/components/schemas/ProductPrice'
 
     ProductInput:
       type: object
